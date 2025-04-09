@@ -4,7 +4,8 @@ set -x
 
 ###############################################################
 # Source FV3GFS workflow modules
-. ${HOMEgfs}/ush/load_fv3gfs_modules.sh
+#. ${HOMEgfs}/ush/load_fv3gfs_modules.sh
+. ${HOMEgfs}/ush/load_ufsda_modules.sh
 status=$?
 if [[ ${status} -ne 0 ]]; then
     exit "${status}"

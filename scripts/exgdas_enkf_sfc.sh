@@ -23,6 +23,7 @@ pwd=$(pwd)
 # Base variables
 DONST=${DONST:-"NO"}
 DO_GSISOILDA=${DO_GSISOILDA:-"NO"}
+DO_GSISNOWDA=${DO_GSISNOWDA:-"NO"}
 DOSFCANL_ENKF=${DOSFCANL_ENKF:-"YES"}
 export CASE=${CASE:-384}
 ntiles=${ntiles:-6}
@@ -73,8 +74,8 @@ NTHREADS_ESFC=${NTHREADS_ESFC:-${NTHREADS:-1}}
 # Ignore possible spelling error (nothing is misspelled)
 # shellcheck disable=SC2153
 BDATE=$(${NDATE} -3 "${PDY}${cyc}")
-bPDY=${BDATE:0:8}
-bcyc=${BDATE:8:2}
+export bPDY=${BDATE:0:8}
+export bcyc=${BDATE:8:2}
 
 # Get dimension information based on CASE
 res=${CASE:1}
@@ -125,6 +126,8 @@ if [ $DONST = "YES" ]; then
 else
   export NST_FILE="NULL"
 fi
+
+# Yanjun - add DO_GSISNOWDA option to regrid your increments here.
 
 # regrid the surface increment files
 if [[ ${DO_GSISOILDA} = "YES" ]]; then
@@ -228,6 +231,28 @@ if [ $DOIAU = "YES" ]; then
 
 fi
 
+# Yanjun: set do_gsisnowda = YES in config.base
+# and pick up change in config.sfcanl and config.esfc
+
+ADDINCRSH=${$HOMEgfs/ush/add_snowtemp_incr.sh}
+
+if  [[ $DO_GSISNOWDA == "YES" ]]; then
+
+    export CASE_IN=${CASE_ENS}
+    export ${NMEM_ENS}
+
+    if [[ "${DOIAU}" == "YES" ]]; then
+        export LFHR=3 # match BDATE
+    else # DOSFCANL_ENKF
+        export LFHR=6 # PDYcyc
+    fi
+
+ # make sure to apply increment to "${COMOUT_ATMOS_RESTART_MEM}/${bPDY}.${bcyc}0000.sfcanl_data.tile${n}.nc" 
+ # output by gcycle
+    $ADDINCRSH
+fi
+
+# Yanjun - you don't need to worry about this option below.
 if [[ "${DOSFCANL_ENKF}" == "YES" ]]; then
     for n in $(seq 1 $ntiles); do
 
