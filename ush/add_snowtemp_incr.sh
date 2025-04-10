@@ -10,6 +10,8 @@ export PGMERR=${PGMERR:-${pgmerr:-'&2'}}
 export REDOUT=${REDOUT:-'1>'}
 export REDERR=${REDERR:-'2>'}
 
+APPLYINCR_EXEC=${EXECgfs}/apply_incr.exe
+
 export PGM=${APPLYINCR_EXEC}
 export pgm=${PGM}
 
@@ -17,7 +19,6 @@ NMEM_INCR=${NMEM_ENS:-1}
 CASE=${CASE:-${CASE_ENS}}
 LFHR=${LFHR:-6}
 
-APPLYINCR_EXEC=${EXECgfs}/apply_incr.exe
 NPROC_INCR=6 # Yanjun, this can be increased if it's slow ( I think this will be enough )
 
 # yanjun - if you have a more recent version of the apply_incr code, 
@@ -28,10 +29,10 @@ cat << EOF > apply_incr_nml
 &noahmp_snow
  date_str="${bPDY}"
  hour_str="${bcyc}"
- res="$CASE"
+ res="${CASE:1}"
  frac_grid="$FRAC_GRID"
  orog_path="${DATA}"
- otype="C${CASE}.mx${ORES}_oro_data"
+ otype="${CASE}.mx${OCNRES}_oro_data"
  rst_path="${DATA}"
  inc_path="${DATA}"
 /
@@ -41,8 +42,8 @@ EOF
 # input orog files
 
 for n in $(seq 1 "${ntiles}"); do
-    ${NCP} "${FIXorog}/${CASE}/C${CASE}.mx${ORES}_oro_data.tile${n}.nc" \
-            "${DATA}/C${CASE}.mx${ORES}_oro_data.tile${n}.nc"
+    ${NCP} "${FIXorog}/${CASE}/${CASE}.mx${OCNRES}_oro_data.tile${n}.nc" \
+            "${DATA}/${CASE}.mx${OCNRES}_oro_data.tile${n}.nc"
 done
 
 if (( LFHR >= 0 )); then 
@@ -69,10 +70,8 @@ for imem in $(seq 1 "${NMEM_INCR}"); do
 
       for n in $(seq 1 $ntiles); do
         # Yanjun - copy your reg-gridded increment file into $DATA/snowinc.${bPDY}.${bcyc}0000.sfc_data.tile${n}.nc
-        for n in $(seq 1 "${ntiles}"); do
-            cpfs  /scratch2/BMC/gsienkf/Clara.Draper/cycle_land/DA_test_era5/DA/jedi_incr/snowinc.20191202.000000.sfc_data.tile${n}.nc  \
+        cpfs  /scratch2/BMC/gsienkf/Clara.Draper/cycle_land/DA_test_era5/DA/jedi_incr/snowinc.20191202.000000.sfc_data.tile${n}.nc  \
                         "$DATA/snowinc.${bPDY}.${bcyc}0000.sfc_data.tile${n}.nc"
-        #done
 
         cpfs ${COMOUT_ATMOS_RESTART_MEM}/${bPDY}.${bcyc}0000.sfcanl_data.tile${n}.nc \
                 ${DATA}/${bPDY}.${bcyc}0000.sfc_data.tile${n}.nc

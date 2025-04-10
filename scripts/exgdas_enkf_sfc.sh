@@ -234,12 +234,12 @@ fi
 # Yanjun: set do_gsisnowda = YES in config.base
 # and pick up change in config.sfcanl and config.esfc
 
-ADDINCRSH=${$HOMEgfs/ush/add_snowtemp_incr.sh}
+ADDINCRSH=${HOMEgfs}/ush/add_snowtemp_incr.sh
 
 if  [[ $DO_GSISNOWDA == "YES" ]]; then
 
     export CASE_IN=${CASE_ENS}
-    export ${NMEM_ENS}
+    export NMEM_ENS
 
     if [[ "${DOIAU}" == "YES" ]]; then
         export LFHR=3 # match BDATE
@@ -247,8 +247,6 @@ if  [[ $DO_GSISNOWDA == "YES" ]]; then
         export LFHR=6 # PDYcyc
     fi
 
- # make sure to apply increment to "${COMOUT_ATMOS_RESTART_MEM}/${bPDY}.${bcyc}0000.sfcanl_data.tile${n}.nc" 
- # output by gcycle
     $ADDINCRSH
 fi
 
