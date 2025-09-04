@@ -111,6 +111,11 @@ class SnowAnalysis(Task):
         FileHandler(bkg_staging_dict).sync()
         logger.debug(f"Background files:\n{pformat(bkg_staging_dict)}")
 
+        # Pre-process snow observtaions (if applicable)
+        if self.task_config.cyc == 0:
+            self.prepare_IMS()
+            self.prepare_GHCN()
+
         # stage bufr observations
         logger.info(f"Staging list of observation files generated from JEDI config")
         obs_dict = self.jedi_dict['snowanlvar'].render_jcb(self.task_config, 'snow_obs_staging')
@@ -144,7 +149,7 @@ class SnowAnalysis(Task):
 
         # initialize JEDI variational application
         logger.info(f"Initializing JEDI variational DA application")
-        self.jedi_dict['snowanlvar'].initialize(self.task_config, clean_empty_obsspaces=False)
+        self.jedi_dict['snowanlvar'].initialize(self.task_config, clean_empty_obsspaces=True)
 
     @logit(logger)
     def prepare_IMS(self) -> None:
@@ -168,11 +173,10 @@ class SnowAnalysis(Task):
         # create a temporary dict of all keys needed in this method
         localconf = AttrDict()
         keys = ['DATA', 'current_cycle', 'COMIN_OBS', 'COMIN_ATMOS_RESTART_PREV',
-                'OPREFIX', 'CASE', 'OCNRES', 'ntiles', 'FIXgfs', 'FIXorog']
+                'OPREFIX', 'CASE', 'OCNRES', 'ntiles', 'FIXgfs', 'snow_bkg_path',
+                'snow_prepobs_path' ]
         for key in keys:
             localconf[key] = self.task_config[key]
-
-        localconf['ims_fcst_path'] = self.task_config['snow_bkg_path']
 
         # Read and render the IMS_OBS_LIST yaml
         logger.info(f"Reading {self.task_config.IMS_OBS_LIST}")
@@ -271,7 +275,7 @@ class SnowAnalysis(Task):
 
         # create a temporary dict of all keys needed in this method
         localconf = AttrDict()
-        keys = ['DATA', 'current_cycle', 'COMIN_OBS', 'OPREFIX', 'cyc']
+        keys = ['DATA', 'current_cycle', 'COMIN_OBS', 'OPREFIX', 'cyc', 'snow_prepobs_path' ]
         for key in keys:
             localconf[key] = self.task_config[key]
 

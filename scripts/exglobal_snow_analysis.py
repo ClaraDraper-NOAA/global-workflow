@@ -20,11 +20,6 @@ if __name__ == '__main__':
     # Instantiate the snow analysis task
     snow_anl = SnowAnalysis(config)
 
-    # Pre-process snow observtaions (if applicable)
-    if snow_anl.task_config.cyc == 0:
-        snow_anl.prepare_IMS()
-        snow_anl.prepare_GHCN()
-
     # Initialize JEDI 2DVar snow analysis
     snow_anl.initialize()
 
