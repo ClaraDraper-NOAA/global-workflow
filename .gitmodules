@@ -18,7 +18,8 @@
   url = https://github.com/NOAA-EMC/GSI.git
 [submodule "sorc/gdas.cd"]
   path = sorc/gdas.cd
-  url = https://github.com/NOAA-EMC/GDASApp.git
+  url = https://github.com/ClaraDraper-NOAA/GDASApp.git
+  branch = feature/reanalysis_ghcn
 [submodule "sorc/gsi_utils.fd"]
   path = sorc/gsi_utils.fd
   url = https://github.com/NOAA-EMC/GSI-Utils.git

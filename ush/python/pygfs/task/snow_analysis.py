@@ -62,12 +62,14 @@ class SnowAnalysis(Task):
                 'npx_ges': _res + 1,
                 'npy_ges': _res + 1,
                 'npz_ges': self.task_config.LEVS - 1,
+                'res': _res,
                 'npz': self.task_config.LEVS - 1,
                 'SNOW_WINDOW_BEGIN': _window_begin,
                 'SNOW_WINDOW_LENGTH': f"PT{self.task_config['assim_freq']}H",
                 'OPREFIX': f"{self.task_config.RUN}.t{self.task_config.cyc:02d}z.",
                 'APREFIX': f"{self.task_config.RUN}.t{self.task_config.cyc:02d}z.",
                 'GPREFIX': f"gdas.t{self.task_config.previous_cycle.hour:02d}z.",
+                'snow_prepobs_path': os.path.join(self.task_config.DATA, 'prep'),
                 'snow_obsdatain_path': os.path.join(self.task_config.DATA, 'obs'),
                 'snow_obsdataout_path': os.path.join(self.task_config.DATA, 'diags'),
                 'snow_bkg_path': os.path.join('.', 'bkg/'),
@@ -109,7 +111,7 @@ class SnowAnalysis(Task):
         FileHandler(bkg_staging_dict).sync()
         logger.debug(f"Background files:\n{pformat(bkg_staging_dict)}")
 
-        # stage observations
+        # stage bufr observations
         logger.info(f"Staging list of observation files generated from JEDI config")
         obs_dict = self.jedi_dict['snowanlvar'].render_jcb(self.task_config, 'snow_obs_staging')
         FileHandler(obs_dict).sync()
@@ -166,7 +168,7 @@ class SnowAnalysis(Task):
         # create a temporary dict of all keys needed in this method
         localconf = AttrDict()
         keys = ['DATA', 'current_cycle', 'COMIN_OBS', 'COMIN_ATMOS_RESTART_PREV',
-                'OPREFIX', 'CASE', 'OCNRES', 'ntiles', 'FIXgfs']
+                'OPREFIX', 'CASE', 'OCNRES', 'ntiles', 'FIXgfs', 'FIXorog']
         for key in keys:
             localconf[key] = self.task_config[key]
 
@@ -182,7 +184,7 @@ class SnowAnalysis(Task):
             logger.warning(f"WARNING: Obs files are missing. Will not execute CALCFIMSEXE")
             return
 
-        # copy the IMS obs files from COMIN_OBS to DATA/obs
+        # copy the IMS obs files from COMIN_OBS to DATA
         logger.info("Copying IMS obs for CALCFIMSEXE")
         FileHandler(prep_ims_config.calcfims).sync()
 
@@ -247,8 +249,80 @@ class SnowAnalysis(Task):
             logger.exception(f"{self.task_config.IMS2IODACONV} failed to produce {output_file}")
             raise FileNotFoundError(f"{os.path.join(localconf.DATA, output_file)}")
         else:
-            logger.info(f"Copy {output_file} to {os.path.join(localconf.DATA, 'obs')}")
+            logger.info(f"Copy {output_file} succesfully generated")
             FileHandler(prep_ims_config.ims2ioda).sync()
+
+    @logit(logger)
+    def prepare_GHCN(self) -> None:
+        """Prepare the GHCN data for a global snow analysis
+
+        This method will prepare GHCN data for a global snow analysis using JEDI.
+        This includes:
+        - creating GHCN snowdepth data in IODA format.
+
+        Parameters
+        ----------
+        Analysis: parent class for GDAS task
+
+        Returns
+        ----------
+        None
+        """
+
+        # create a temporary dict of all keys needed in this method
+        localconf = AttrDict()
+        keys = ['DATA', 'current_cycle', 'COMIN_OBS', 'OPREFIX', 'cyc']
+        for key in keys:
+            localconf[key] = self.task_config[key]
+
+        localconf['ghcn_filestub'] = f"ghcn_snow.{to_YMD(localconf.current_cycle)}.t{localconf.cyc:02d}z"
+
+        # Read and render the GHCN_OBS_LIST yaml
+        logger.info(f"Reading {self.task_config.GHCN_OBS_LIST}")
+        prep_ghcn_config = parse_j2yaml(self.task_config.GHCN_OBS_LIST, localconf)
+        logger.debug(f"{self.task_config.GHCN_OBS_LIST}:\n{pformat(prep_ghcn_config)}")
+
+        csv_file = os.path.join(localconf.COMIN_OBS, f"{localconf.ghcn_filestub}.csv")
+        if not os.path.isfile(csv_file):
+            logger.warning(f"WARNING: GHCN obs file not found.")
+            return
+
+        # define these locations in gdas/snow/prep/prep_ghcn.yaml.j2
+        logger.info("Copying GHCN obs to DATA")
+        FileHandler(prep_ghcn_config.stage).sync()
+
+        # Execute ioda converter to create the GHCN obs data in IODA format
+        logger.info("Create GHCN obs data in IODA format")
+
+        input_file = f"{localconf.ghcn_filestub}.csv"
+        output_file = f"{localconf.ghcn_filestub}.nc4"
+        station_file = f"ghcnd-stations.txt"
+        if os.path.isfile(f"{os.path.join(localconf.DATA, output_file)}"):
+            rm_p(output_file)
+
+        exe = Executable(self.task_config.GHCN2IODACONV)
+        exe.add_default_arg(["-i", f"{os.path.join(localconf.DATA, input_file)}"])
+        exe.add_default_arg(["-o", f"{os.path.join(localconf.DATA, output_file)}"])
+        exe.add_default_arg(["-f", f"{os.path.join(localconf.DATA, station_file)}"])
+        exe.add_default_arg(["-d", f"{to_YMDH(localconf.current_cycle)}"])
+        try:
+            logger.debug(f"Executing {exe}")
+            exe()
+        except OSError:
+            logger.exception(f"Failed to execute {exe}")
+            raise
+        except Exception as err:
+            logger.exception(f"An error occured during execution of {exe}")
+            raise WorkflowException(f"An error occured during execution of {exe}") from err
+
+        # Ensure the IODA snow depth GHCN file is produced by the IODA converter
+        # If so, copy to DATA/obs/
+        if not os.path.isfile(f"{os.path.join(localconf.DATA, output_file)}"):
+            logger.exception(f"{self.task_config.GHCN2IODACONV} failed to produce {output_file}")
+            raise FileNotFoundError(f"{os.path.join(localconf.DATA, output_file)}")
+        else:
+            logger.info(f"Copy {output_file} successfully generated")
+            FileHandler(prep_ghcn_config.ghcn2ioda).sync()
 
     @logit(logger)
     def execute(self, jedi_dict_key: str) -> None:

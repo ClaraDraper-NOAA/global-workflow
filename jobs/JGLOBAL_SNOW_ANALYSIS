@@ -28,6 +28,11 @@ mkdir -m 775 -p "${COMOUT_SNOW_ANALYSIS}" "${COMOUT_CONF}"
 
 ###############################################################
 # Run relevant script
+#
+# # for testing only
+echo "CSD snow analysis job, manually coppying GHCN files"
+cp /gpfs/f6/scratch/Clara.Draper/gfs-cpu/LAND_TEMP/${PDY}.csv ${COMIN_OBS}/ghcn_snow.${PDY}.t${cyc}z.csv
+cp /gpfs/f6/scratch/Clara.Draper/gfs-cpu/LAND_TEMP/ghcnd-stations.txt ${COMIN_OBS}/ghcnd-stations.txt
 
 EXSCRIPT=${SNOWANLPY:-${SCRgfs}/exglobal_snow_analysis.py}
 ${EXSCRIPT} && true
