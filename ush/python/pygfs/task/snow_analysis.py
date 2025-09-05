@@ -111,10 +111,12 @@ class SnowAnalysis(Task):
         FileHandler(bkg_staging_dict).sync()
         logger.debug(f"Background files:\n{pformat(bkg_staging_dict)}")
 
-        # Pre-process snow observtaions (if applicable)
+        # Pre-process snow observtaions (if requested)
         if self.task_config.cyc == 0:
-            self.prepare_IMS()
-            self.prepare_GHCN()
+            if 'IMS_OBS_LIST' in self.task_config:
+                self.prepare_IMS()
+            if 'GHCN_OBS_LIST' in self.task_config:
+                self.prepare_GHCN()
 
         # stage bufr observations
         logger.info(f"Staging list of observation files generated from JEDI config")
@@ -174,7 +176,7 @@ class SnowAnalysis(Task):
         localconf = AttrDict()
         keys = ['DATA', 'current_cycle', 'COMIN_OBS', 'COMIN_ATMOS_RESTART_PREV',
                 'OPREFIX', 'CASE', 'OCNRES', 'ntiles', 'FIXgfs', 'snow_bkg_path',
-                'snow_prepobs_path' ]
+                'snow_prepobs_path']
         for key in keys:
             localconf[key] = self.task_config[key]
 
@@ -275,7 +277,7 @@ class SnowAnalysis(Task):
 
         # create a temporary dict of all keys needed in this method
         localconf = AttrDict()
-        keys = ['DATA', 'current_cycle', 'COMIN_OBS', 'OPREFIX', 'cyc', 'snow_prepobs_path' ]
+        keys = ['DATA', 'current_cycle', 'COMIN_OBS', 'OPREFIX', 'cyc', 'snow_prepobs_path']
         for key in keys:
             localconf[key] = self.task_config[key]
 
@@ -291,7 +293,6 @@ class SnowAnalysis(Task):
             logger.warning(f"WARNING: GHCN obs file not found.")
             return
 
-        # define these locations in gdas/snow/prep/prep_ghcn.yaml.j2
         logger.info("Copying GHCN obs to DATA")
         FileHandler(prep_ghcn_config.stage).sync()
 
