@@ -136,6 +136,8 @@ if [[ "${DOIAU:-}" == "YES" ]]; then # Update surface restarts at beginning of w
 fi
 
 # if doing GSI soil anaysis, copy increment file and re-grid it to native model resolution
+
+# DH: first job called here.
 if [[ "${DO_GSISOILDA}" == "YES" ]]; then
 
     export COMIN_SOIL_ANALYSIS_MEM="${COMIN_ATMOS_ENKF_ANALYSIS_STAT}"
@@ -144,7 +146,8 @@ if [[ "${DO_GSISOILDA}" == "YES" ]]; then
     export CASE_OUT="${CASE}"
     export OCNRES_OUT="${OCNRES}"
     export LFHR
-
+ 
+    # DH: executable is called by this script
     "${REGRIDSH}"
     export err=$?
     if [[ ${err} -ne 0 ]]; then
@@ -152,6 +155,11 @@ if [[ "${DO_GSISOILDA}" == "YES" ]]; then
     fi
 
 fi
+
+
+# DH: second job is in this loop. 
+# it's being called twice here. Initially, we can call it only at 
+# the start of the assim cycle (but analcalc will crash) 
 
 # Loop over the dates in the window to update the surface restarts
 for hr in "${!gcycle_dates[@]}"; do
@@ -174,6 +182,7 @@ for hr in "${!gcycle_dates[@]}"; do
         cpreq "${sfcdata_dir}/${datestr}.${snow_prefix}sfc_data.tile${nn}.nc" "${DATA}/sfc_data_cycle.${nn}"
     done
 
+    # DH - executable called within global_cycle.sh
     "${CYCLESH}" && true
     export err=$?
     if [[ ${err} -ne 0 ]]; then
